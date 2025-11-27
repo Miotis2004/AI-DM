@@ -1,0 +1,90 @@
+{
+    "id": "goblin-cave-intro",
+    "title": "The Goblin Cave",
+    "description": "A simple introductory adventure for level 1 characters. Clear out a goblin-infested cave and claim the treasure.",
+    "recommendedLevel": 1,
+    "rooms": [
+      {
+        "id": "entrance",
+        "name": "Cave Entrance",
+        "description": "A dark cave mouth yawns before you, roughly 10 feet wide and 8 feet tall. The smell of decay and something... goblin-like wafts out from the darkness. Crude marks are scratched into the stone around the entrance. To the north, you can hear distant sounds - shuffling, muttering in a guttural tongue.",
+        "exits": {
+          "north": "main-chamber"
+        },
+        "items": ["A weathered torch mounted on the wall", "Scattered bones"],
+        "npcs": [],
+        "secrets": "A small crack in the eastern wall contains a dusty healing potion. (DC 15 Investigation to find)"
+      },
+      {
+        "id": "main-chamber",
+        "name": "Main Chamber",
+        "description": "This large cavern is lit by sputtering torches mounted on the walls. Crude bedrolls made of furs and straw are scattered about. The ceiling rises about 15 feet overhead, disappearing into darkness. To the east, a smaller passage leads deeper into the cave. The room reeks of unwashed goblin.",
+        "exits": {
+          "south": "entrance",
+          "east": "treasure-room"
+        },
+        "items": ["Rusty shortsword", "Moldy bread", "Goblin sleeping mat"],
+        "npcs": ["goblin-guard"],
+        "encounter": "goblin-ambush"
+      },
+      {
+        "id": "treasure-room",
+        "name": "Treasure Room",
+        "description": "A small chamber, barely 10 feet across. In the center sits a sturdy wooden chest reinforced with iron bands. The chest has a heavy iron lock. Torch light flickers off something metallic inside the chest's keyhole. The walls are bare stone, and there's no other way out except back west.",
+        "exits": {
+          "west": "main-chamber"
+        },
+        "items": ["Locked chest"],
+        "npcs": [],
+        "secrets": "The chest key is hidden under a loose stone in the northeast corner. (DC 12 Investigation to find). The chest contains 50 gold pieces and a silver dagger (+1 to hit)."
+      }
+    ],
+    "npcs": [
+      {
+        "id": "goblin-guard",
+        "name": "Grunk the Goblin",
+        "description": "A small, wiry goblin with mottled green-grey skin. He wears a leather vest studded with rusty nails and grips a notched shortsword. His yellow eyes gleam with malice and fear.",
+        "personality": "Cowardly when alone, but aggressive and boastful when backed up by his fellows. Speaks broken Common.",
+        "stats": {
+          "hp": 7,
+          "ac": 13,
+          "attack": "+4 to hit, 1d6+2 slashing damage"
+        },
+        "dialogue": [
+          "Grunk no like big folk! You go away!",
+          "This Grunk's cave! You leave or Grunk call friends!",
+          "You think you tough? Grunk show you!"
+        ]
+      }
+    ],
+    "encounters": [
+      {
+        "id": "goblin-ambush",
+        "name": "Goblin Ambush",
+        "description": "As you enter the main chamber, two goblins who were hiding behind the bedrolls leap out with shrieks! They brandish crude weapons and charge forward!",
+        "enemies": [
+          {
+            "name": "Goblin Warrior 1",
+            "hp": 7,
+            "ac": 13,
+            "attack": "+4 to hit, 1d6+2 slashing damage (shortsword)",
+            "initiative": 0
+          },
+          {
+            "name": "Goblin Warrior 2",
+            "hp": 7,
+            "ac": 13,
+            "attack": "+4 to hit, 1d6+2 slashing damage (shortsword)",
+            "initiative": 0
+          }
+        ],
+        "tactics": "The goblins try to flank the party, attacking the character who looks least armored. If reduced to 3 HP or less, a goblin will attempt to flee."
+      }
+    ],
+    "objectives": [
+      "Enter the goblin cave",
+      "Defeat or drive off the goblins",
+      "Find the treasure chest",
+      "Open the locked chest"
+    ]
+  }

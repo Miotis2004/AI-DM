@@ -1,0 +1,210 @@
+.no-module {
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .module-option {
+    background: #2a2a2a;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 4px;
+    border-left: 3px solid #66f;
+  }
+  
+  .module-info {
+    margin-bottom: 10px;
+  }
+  
+  .module-info strong {
+    font-size: 16px;
+    color: #fff;
+  }
+  
+  .module-info p {
+    margin: 5px 0;
+    color: #aaa;
+    font-size: 13px;
+  }
+  
+  .module-level {
+    display: inline-block;
+    background: #4a4a2a;
+    color: #ff6;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-top: 5px;
+  }
+  
+  .module-option button {
+    width: 100%;
+    padding: 10px;
+    background: #3a4a3a;
+  }
+  
+  .adventure-module {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .current-room {
+    background: #2a2a3a;
+    padding: 15px;
+    border-radius: 4px;
+    border-left: 3px solid #66f;
+  }
+  
+  .current-room h3 {
+    margin: 0 0 10px 0;
+    color: #fff;
+    font-size: 16px;
+  }
+  
+  .room-description {
+    color: #ccc;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 15px;
+  }
+  
+  .exits-section {
+    margin-top: 15px;
+  }
+  
+  .exits-section strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #aaa;
+    font-size: 12px;
+  }
+  
+  .exits {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .exit-button {
+    padding: 8px 12px;
+    background: #3a3a4a;
+    border: 1px solid #555;
+    text-align: left;
+    font-size: 13px;
+  }
+  
+  .exit-button:hover {
+    background: #4a4a5a;
+  }
+  
+  .exit-button.visited {
+    background: #2a3a3a;
+    border-color: #4a6a4a;
+  }
+  
+  .items-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #444;
+  }
+  
+  .items-section strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #aaa;
+    font-size: 12px;
+  }
+  
+  .items-section ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #ccc;
+    font-size: 12px;
+  }
+  
+  .items-section li {
+    margin-bottom: 3px;
+  }
+  
+  .secrets-hint {
+    margin-top: 15px;
+    padding: 8px;
+    background: #3a3a2a;
+    border-radius: 4px;
+    border-left: 2px solid #aa6;
+    font-size: 11px;
+    color: #aa6;
+  }
+  
+  .objectives-section {
+    background: #2a2a2a;
+    padding: 12px;
+    border-radius: 4px;
+  }
+  
+  .objectives-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #aaa;
+  }
+  
+  .objectives-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .objectives-list li {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    font-size: 13px;
+    transition: background 0.2s;
+  }
+  
+  .objectives-list li:hover:not(.completed) {
+    background: #2a2a2a;
+  }
+  
+  .objectives-list li.completed {
+    opacity: 0.6;
+  }
+  
+  .objective-checkbox {
+    margin-right: 10px;
+    font-size: 14px;
+  }
+  
+  .objective-text-completed {
+    text-decoration: line-through;
+    color: #888;
+  }
+  
+  .progress-stats {
+    display: flex;
+    gap: 15px;
+    padding: 12px;
+    background: #2a2a2a;
+    border-radius: 4px;
+  }
+  
+  .progress-stats .stat {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+  }
+  
+  .stat-label {
+    color: #888;
+  }
+  
+  .stat-value {
+    color: #4af;
+    font-weight: bold;
+  }
