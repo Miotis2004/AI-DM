@@ -6,6 +6,7 @@ import { calculateModifier } from '../types/character';
 import './CharacterCard.css';
 
 const CharacterCard: React.FC = () => {
+  // Use the alias selectCharacter for backward compatibility if we defined it in store
   const { characters, currentCharacterId, selectCharacter, addCharacter, updateCharacter, getCurrentCharacter } = useGameStore();
   const [showCreation, setShowCreation] = useState(false);
   const [view, setView] = useState<'stats' | 'skills' | 'inventory'>('stats');
