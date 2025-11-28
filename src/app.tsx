@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
-import AIDMCard from './components/AIDMCard';
+import AdventureCard from './components/AdventureCard';
 import DiceCard from './components/DiceCard';
 import CharacterCard from './components/CharacterCard';
 import AdventureModuleCard from './components/AdventureModuleCard';
@@ -11,7 +11,7 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const App: React.FC = () => {
   const [layout, setLayout] = useState<Layout[]>([
-    { i: 'ai-dm', x: 0, y: 0, w: 6, h: 12, minW: 4, minH: 8 },        // Full left side
+    { i: 'adventure', x: 0, y: 0, w: 6, h: 12, minW: 4, minH: 8 },    // Full left side
     { i: 'character', x: 6, y: 0, w: 6, h: 5, minW: 4, minH: 4 },     // Top right
     { i: 'dice', x: 6, y: 5, w: 6, h: 4, minW: 2, minH: 3 },          // Middle right
     { i: 'module', x: 6, y: 9, w: 6, h: 7, minW: 3, minH: 5 },        // Bottom right
@@ -22,7 +22,10 @@ const App: React.FC = () => {
     const savedLayout = localStorage.getItem('dnd-layout');
     if (savedLayout) {
       try {
-        setLayout(JSON.parse(savedLayout));
+        const parsed = JSON.parse(savedLayout);
+        // Migration: rename ai-dm to adventure if needed
+        const migrated = parsed.map((l: any) => l.i === 'ai-dm' ? { ...l, i: 'adventure' } : l);
+        setLayout(migrated);
       } catch (e) {
         console.error('Failed to load saved layout');
       }
@@ -45,8 +48,8 @@ const App: React.FC = () => {
         onLayoutChange={onLayoutChange}
         draggableHandle=".card-header"
       >
-        <div key="ai-dm">
-          <AIDMCard />
+        <div key="adventure">
+          <AdventureCard />
         </div>
         <div key="character">
           <CharacterCard />
