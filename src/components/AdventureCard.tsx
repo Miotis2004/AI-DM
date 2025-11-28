@@ -138,9 +138,15 @@ const AdventureCard: React.FC = () => {
               <div
                 style={{
                   ...styles.msgBubble,
-                  background: m.role === 'system' ? 'rgba(124, 58, 237, 0.2)' : (m.role === 'player' ? "#2d6cdf" : "#334155"),
+                  background:
+                    m.role === "player"
+                      ? "#2d6cdf"
+                      : m.role === "dm"
+                      ? "#334155"
+                      : "#7c3aed", // System messages
                   alignSelf: m.role === "player" ? "flex-end" : "flex-start",
                   border: m.role === 'system' ? '1px solid #7c3aed' : 'none',
+                  background: m.role === 'system' ? 'rgba(124, 58, 237, 0.2)' : (m.role === 'player' ? "#2d6cdf" : "#334155")
                 }}
               >
                 {m.role !== 'player' && <div style={styles.msgRole}>{m.role.toUpperCase()}</div>}

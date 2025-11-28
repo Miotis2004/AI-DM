@@ -31,8 +31,6 @@ interface GameStore {
     total: number;
     timestamp: number;
   } | null;
-  rollRequest: string | null;
-  pendingRollRequest: string | null;
 
   // Module State
   currentModule: AdventureModule | null;
@@ -44,13 +42,11 @@ interface GameStore {
   updateCharacter: (character: Character) => void;
   deleteCharacter: (id: string) => void;
   setCurrentCharacter: (id: string | null) => void;
-  selectCharacter: (id: string | null) => void; // Alias for compatibility
   getCurrentCharacter: () => Character | null;
 
   addToLog: (role: MessageRole, message: string) => void;
   clearLog: () => void;
 
-  // Dice Actions
   setLastRoll: (roll: {
     sides: number;
     result: number;
@@ -58,10 +54,7 @@ interface GameStore {
     total: number;
     timestamp: number;
   }) => void;
-  rollDice: (sides: number, modifier?: number) => void;
-  clearRollRequest: () => void;
 
-  // Module Actions
   startModule: (module: AdventureModule) => void;
   move: (direction: string) => void;
   getCurrentRoom: () => Room | null;
@@ -87,8 +80,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     },
   ],
   lastRoll: null,
-  rollRequest: null,
-  pendingRollRequest: null,
   currentModule: null,
   moduleProgress: null,
   activeEncounter: null,
@@ -113,7 +104,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     })),
 
   setCurrentCharacter: (id: string | null) => set({ currentCharacterId: id }),
-  selectCharacter: (id: string | null) => set({ currentCharacterId: id }), // Alias
   
   getCurrentCharacter: () => {
     const state = get();
@@ -131,28 +121,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }),
 
   setLastRoll: (roll: any) => set({ lastRoll: roll }),
-
-  rollDice: (sides, modifier = 0) => {
-    const result = Math.floor(Math.random() * sides) + 1;
-    const total = result + modifier;
-    const roll = {
-      sides,
-      result,
-      modifier,
-      total,
-      timestamp: Date.now(),
-    };
-
-    set({
-      lastRoll: roll,
-      pendingRollRequest: null,
-    });
-
-    // Log the roll
-    get().addToLog('system', `🎲 Rolled d${sides}${modifier >= 0 ? '+' : ''}${modifier}: ${result} = **${total}**`);
-  },
-
-  clearRollRequest: () => set({ rollRequest: null, pendingRollRequest: null }),
 
   startModule: (module: AdventureModule) => {
     const startRoomId = module.rooms[0]?.id || '';
