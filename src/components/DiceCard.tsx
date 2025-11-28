@@ -6,6 +6,7 @@ const DiceCard: React.FC = () => {
   const { lastRoll, pendingRollRequest, rollDice, clearRollRequest } = useGameStore();
 
   // Highlight dice roller when there's a pending roll request
+  // Note: pendingRollRequest string logic might need adjustment if it's no longer structured
   const isPending = pendingRollRequest !== null;
 
   const handleRoll = (sides: number) => {
@@ -14,8 +15,7 @@ const DiceCard: React.FC = () => {
 
   useEffect(() => {
     if (lastRoll) {
-      // Announce the roll to the DM
-      console.log(`Rolled d${lastRoll.sides}: ${lastRoll.result} (Total: ${lastRoll.total})`);
+      // Announce the roll to the DM logic is handled in store now
     }
   }, [lastRoll]);
 
@@ -30,8 +30,7 @@ const DiceCard: React.FC = () => {
             marginBottom: '15px',
             border: '1px solid #aa8800'
           }}>
-            <strong>Roll requested:</strong> {pendingRollRequest.type}
-            {pendingRollRequest.dc && ` (DC ${pendingRollRequest.dc})`}
+            <strong>Roll requested:</strong> {pendingRollRequest}
           </div>
         )}
         
