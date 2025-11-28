@@ -1,192 +1,71 @@
-/*
-  Goblin Cave — Drop-in Test Module for an AI GM
-  ------------------------------------------------
-  • Zero dependencies; plain TypeScript types + data.
-  • Includes a light validator and small simulation harness.
-  • Designed for LLM agents: human-friendly prose + machine-readable fields.
-*/
-
-// ===== Core Types =====
-export type Ability = "STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA";
-export type Skill =
-  | "Acrobatics"
-  | "Animal Handling"
-  | "Arcana"
-  | "Athletics"
-  | "Deception"
-  | "History"
-  | "Insight"
-  | "Intimidation"
-  | "Investigation"
-  | "Medicine"
-  | "Nature"
-  | "Perception"
-  | "Performance"
-  | "Persuasion"
-  | "Religion"
-  | "Sleight of Hand"
-  | "Stealth"
-  | "Survival";
-
-export type DamageType =
-  | "slashing"
-  | "piercing"
-  | "bludgeoning"
-  | "fire"
-  | "cold"
-  | "acid"
-  | "lightning"
-  | "thunder"
-  | "necrotic"
-  | "radiant"
-  | "poison"
-  | "psychic";
-
-export interface AttackBlock {
-  name: string; // "Shortsword"
-  bonus: number; // attack bonus to hit
-  damageDice: string; // "1d6+2"
-  damageType: DamageType; // "slashing"
-  reach?: string; // e.g., "5 ft"
-  range?: string; // e.g., "80/320 ft"
-  formatted?: string; // UI string, optional
-}
-
-export interface StatBlock {
-  cr?: number; // challenge rating
-  ac: number;
-  hp: number;
-  speed?: string;
-  initiativeMod?: number;
-  abilities?: Partial<Record<Ability, number>>; // modifiers
-  saves?: Partial<Record<Ability, number>>;
-  skills?: Partial<Record<Skill, number>>;
-  passivePerception?: number;
-  senses?: string;
-  languages?: string;
-  attacks: AttackBlock[];
-  traits?: string[]; // textual traits, simple
-}
-
-export interface Check {
-  ability?: Ability; // optional ability hint
-  skill?: Skill; // skill to use
-  dc: number;
-  onSuccess: string;
-  onFailure?: string;
-}
-
-export interface Lock {
-  isLocked: boolean;
-  keyItemId?: string;
-  pickDC?: number;
-  forceDC?: number;
-}
-
-export interface Container {
-  id: string;
-  name: string;
-  description?: string;
-  lock?: Lock;
-  contents: string[]; // item ids or simple strings like "50 gp"
-}
-
-export interface NPC {
-  id: string;
-  name: string;
-  role: string; // "cowardly goblin scout"
-  disposition: "hostile" | "wary" | "neutral" | "friendly";
-  stats?: StatBlock; // optional for noncombatants
-  motivations?: string[]; // short hooks
-  dialogue?: Array<{ cue: string; line: string; intent?: string }>;
-}
-
-export interface EncounterEnemyRef {
-  id?: string; // optional ref to a named NPC stat template
-  name: string; // label in encounter, e.g., "Goblin Guard"
-  stats: StatBlock;
-  count?: number; // default 1
-}
-
-export interface Encounter {
-  id: string;
-  name: string;
-  description: string;
-  enemies: EncounterEnemyRef[];
-  tactics?: string;
-  stealthAvoidDC?: number; // party can bypass if group Stealth beats this
-  scaling?: { easy?: string; medium?: string; hard?: string; deadly?: string };
-  treasure?: string[]; // item ids or text rewards
-}
-
-export interface Secret {
-  text: string;
-  check?: Check;
-}
-
-export interface Room {
-  id: string;
-  name: string;
-  description: string;
-  light: "bright" | "dim" | "dark";
-  ambient?: string; // smells, sounds
-  exits: Record<string, string>; // direction -> roomId
-  items?: string[]; // item ids
-  npcs?: string[]; // npc ids present by default
-  encounterId?: string; // encounter that may trigger here
-  secrets?: Secret[];
-  stealthDC?: number; // to move unnoticed through this room
-}
-
-export interface Objective {
-  id: string;
-  text: string;
-  doneIf: string; // natural language condition
-}
-
-export interface AdventureModule {
-  id: string;
-  title: string;
-  levelRange: [number, number];
-  tags: string[];
-  summary: string;
-  rooms: Room[];
-  encounters: Encounter[];
-  npcs: NPC[];
-  containers: Container[];
-  items: Array<{ id: string; name: string; description?: string; type?: string }>;
-  objectives: Objective[];
-  rules?: {
-    stealth?: string;
-    negotiation?: string;
-  };
-}
-
-// Additional types for the UI
-export type MessageRole = "dm" | "player" | "system";
-export interface Message { 
-  id: string; 
-  role: MessageRole; 
-  message: string; 
-  ts: number; 
-}
-
-export interface Character {
-  id: string;
-  name: string;
-  class: string;
-  race: string;
-  level: number;
-  abilityMods: Partial<Record<Ability, number>>;
-  skills: Partial<Record<Skill, boolean>>;
-}
-
-export interface ModuleProgress {
-  currentRoom: string;
-  defeatedEncounters?: string[];
-}
+import {
+  AdventureModule,
+  Room,
+  Encounter,
+  NPC,
+  Container,
+  StatBlock,
+  Objective
+} from "../../types/module";
 
 // ===== Data: Goblin Cave =====
+
+// NPC templates and named figures
+const GOBLIN_GUARD: StatBlock = {
+  cr: 0.25,
+  ac: 15,
+  hp: 7,
+  speed: "30 ft",
+  initiativeMod: 2,
+  abilities: { DEX: 2 },
+  skills: { Stealth: 6, Perception: 2 },
+  passivePerception: 9,
+  senses: "darkvision 60 ft",
+  attacks: [
+    {
+      name: "Scimitar",
+      bonus: 4,
+      damageDice: "1d6+2",
+      damageType: "slashing",
+      reach: "5 ft",
+      formatted: "+4 to hit, 5 avg slashing",
+    },
+    {
+      name: "Shortbow",
+      bonus: 4,
+      damageDice: "1d6+2",
+      damageType: "piercing",
+      range: "80/320 ft",
+      formatted: "+4 to hit, 5 avg piercing",
+    },
+  ],
+  traits: ["Nimble Escape: Disengage or Hide as a bonus action"],
+  languages: "Common, Goblin",
+};
+
+const WOLF: StatBlock = {
+  cr: 0.25,
+  ac: 13,
+  hp: 11,
+  speed: "40 ft",
+  initiativeMod: 2,
+  abilities: { STR: 1, DEX: 2 },
+  skills: { Perception: 3, Stealth: 4 },
+  passivePerception: 13,
+  senses: "keen hearing and smell",
+  attacks: [
+    {
+      name: "Bite",
+      bonus: 4,
+      damageDice: "2d4+2",
+      damageType: "piercing",
+      reach: "5 ft",
+      formatted: "+4 to hit, 7 avg piercing; DC 11 STR save or prone",
+    },
+  ],
+  traits: ["Pack Tactics: Advantage on attacks if ally is within 5 ft of target"],
+  languages: "",
+};
 
 // Items
 const items: AdventureModule["items"] = [
@@ -245,63 +124,6 @@ const npcs: NPC[] = [
     },
   },
 ];
-
-// Encounter enemy stat templates
-const GOBLIN_GUARD: StatBlock = {
-  cr: 0.25,
-  ac: 15,
-  hp: 7,
-  speed: "30 ft",
-  initiativeMod: 2,
-  abilities: { DEX: 2 },
-  skills: { Stealth: 6, Perception: 2 },
-  passivePerception: 9,
-  senses: "darkvision 60 ft",
-  attacks: [
-    {
-      name: "Scimitar",
-      bonus: 4,
-      damageDice: "1d6+2",
-      damageType: "slashing",
-      reach: "5 ft",
-      formatted: "+4 to hit, 5 avg slashing",
-    },
-    {
-      name: "Shortbow",
-      bonus: 4,
-      damageDice: "1d6+2",
-      damageType: "piercing",
-      range: "80/320 ft",
-      formatted: "+4 to hit, 5 avg piercing",
-    },
-  ],
-  traits: ["Nimble Escape: Disengage or Hide as a bonus action"],
-  languages: "Common, Goblin",
-};
-
-const WOLF: StatBlock = {
-  cr: 0.25,
-  ac: 13,
-  hp: 11,
-  speed: "40 ft",
-  initiativeMod: 2,
-  abilities: { STR: 1, DEX: 2 },
-  skills: { Perception: 3, Stealth: 4 },
-  passivePerception: 13,
-  senses: "keen hearing and smell",
-  attacks: [
-    {
-      name: "Bite",
-      bonus: 4,
-      damageDice: "2d4+2",
-      damageType: "piercing",
-      reach: "5 ft",
-      formatted: "+4 to hit, 7 avg piercing; DC 11 STR save or prone",
-    },
-  ],
-  traits: ["Pack Tactics: Advantage on attacks if ally is within 5 ft of target"],
-  languages: "",
-};
 
 // Encounters
 const encounters: Encounter[] = [
@@ -422,9 +244,6 @@ const rooms: Room[] = [
   },
 ];
 
-// Build encounters with treasure mapping to containers where relevant
-// In this simple data model, treasure lists item ids or loose currency strings.
-
 // Objectives
 const objectives: Objective[] = [
   { id: "clear-goblins", text: "Drive off or defeat the goblins.", doneIf: "No hostile goblins remain in main-chamber or antechamber." },
@@ -513,26 +332,4 @@ export function validateModule(m: AdventureModule): string[] {
   return errors;
 }
 
-// ===== Tiny Simulation Harness (optional) =====
-// This is safe to remove in production. It helps smoke-test the graph.
-export function simulateTraversal(startRoomId = "entrance") {
-  const visited: string[] = [];
-  let current = startRoomId.trim();
-  const order: string[] = [];
-
-  function step(roomId: string) {
-    if (visited.includes(roomId)) return;
-    visited.push(roomId);
-    order.push(roomId);
-    const room = GoblinCave.rooms.find((r) => r.id === roomId);
-    if (!room) return;
-    const next = Object.values(room.exits);
-    for (const n of next) step(n);
-  }
-
-  step(current);
-  return order;
-}
-
-// Default export for convenient imports
 export default GoblinCave;

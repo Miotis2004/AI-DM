@@ -1,14 +1,29 @@
 import { create } from 'zustand';
-import { Character } from '../types/character';
-import { AdventureModule, ModuleProgress, Room } from '../types/module';
+import { Character, calculateModifier } from '../types/character';
+import { AdventureModule, ModuleProgress, Room, Message, MessageRole, Encounter, StatBlock, EncounterEnemyRef } from '../types/module';
 
-export type AIProvider = 'ollama' | 'claude';
+interface ActiveEncounterState {
+  id: string;
+  enemies: Array<{
+    instanceId: string;
+    originalRefId: string;
+    name: string;
+    hp: number;
+    maxHp: number;
+    ac: number;
+    stats: StatBlock;
+  }>;
+}
 
 interface GameStore {
-  // Existing state
+  // Characters
   characters: Character[];
   currentCharacterId: string | null;
-  conversationHistory: Array<{ role: 'user' | 'dm'; message: string }>;
+
+  // Game Log
+  log: Message[];
+
+  // Dice
   lastRoll: {
     sides: number;
     result: number;
@@ -16,26 +31,22 @@ interface GameStore {
     total: number;
     timestamp: number;
   } | null;
-  rollRequest: string | null;
-  pendingRollRequest: string | null;
-  currentModel: string;
-  availableModels: string[];
+
+  // Module State
   currentModule: AdventureModule | null;
   moduleProgress: ModuleProgress | null;
-  
-  // New AI provider state
-  aiProvider: AIProvider;
-  claudeApiKey: string;
+  activeEncounter: ActiveEncounterState | null;
   
   // Actions
   addCharacter: (character: Character) => void;
   updateCharacter: (character: Character) => void;
   deleteCharacter: (id: string) => void;
   setCurrentCharacter: (id: string | null) => void;
-  selectCharacter: (id: string | null) => void;
   getCurrentCharacter: () => Character | null;
-  addMessage: (role: 'user' | 'dm', message: string) => void;
-  clearMessages: () => void;
+
+  addToLog: (role: MessageRole, message: string) => void;
+  clearLog: () => void;
+
   setLastRoll: (roll: {
     sides: number;
     result: number;
@@ -43,190 +54,301 @@ interface GameStore {
     total: number;
     timestamp: number;
   }) => void;
-  rollDice: (sides: number, modifier?: number) => void;
-  requestRoll: (type: string) => void;
-  clearRollRequest: () => void;
-  setCurrentModel: (model: string) => void;
-  setAvailableModels: (models: string[]) => void;
-  loadModule: (module: AdventureModule) => void;
-  setCurrentRoom: (roomId: string) => void;
-  markRoomVisited: (roomId: string) => void;
-  completeObjective: (objective: string) => void;
-  defeatEncounter: (encounterId: string) => void;
+
+  startModule: (module: AdventureModule) => void;
+  move: (direction: string) => void;
   getCurrentRoom: () => Room | null;
   
-  // New AI provider actions
-  setAIProvider: (provider: AIProvider) => void;
-  setClaudeApiKey: (apiKey: string) => void;
+  // Combat Actions
+  startEncounter: (encounterId: string) => void;
+  attackEnemy: (enemyInstanceId: string) => void;
+  fleeEncounter: () => void;
 }
+
+const uid = () => Math.random().toString(36).slice(2);
 
 export const useGameStore = create<GameStore>((set, get) => ({
   // Initial state
   characters: [],
   currentCharacterId: null,
-  conversationHistory: [
-    { role: 'dm', message: 'Welcome, adventurer! Create or select a character to begin your quest.' },
+  log: [
+    {
+      id: uid(),
+      role: 'system',
+      message: 'Welcome, adventurer! Load a module to begin.',
+      ts: Date.now()
+    },
   ],
   lastRoll: null,
-  rollRequest: null,
-  pendingRollRequest: null,
-  currentModel: 'mistral',
-  availableModels: [],
   currentModule: null,
   moduleProgress: null,
-  
-  // New AI provider initial state
-  aiProvider: 'ollama',
-  claudeApiKey: '',
+  activeEncounter: null,
 
   // Actions
-  addCharacter: (character) =>
-    set((state) => ({
+  addCharacter: (character: Character) =>
+    set((state: GameStore) => ({
       characters: [...state.characters, character],
     })),
 
-  updateCharacter: (character) =>
-    set((state) => ({
-      characters: state.characters.map((c) =>
+  updateCharacter: (character: Character) =>
+    set((state: GameStore) => ({
+      characters: state.characters.map((c: Character) =>
         c.id === character.id ? character : c
       ),
     })),
 
-  deleteCharacter: (id) =>
-    set((state) => ({
-      characters: state.characters.filter((c) => c.id !== id),
+  deleteCharacter: (id: string) =>
+    set((state: GameStore) => ({
+      characters: state.characters.filter((c: Character) => c.id !== id),
       currentCharacterId: state.currentCharacterId === id ? null : state.currentCharacterId,
     })),
 
-  setCurrentCharacter: (id) => set({ currentCharacterId: id }),
+  setCurrentCharacter: (id: string | null) => set({ currentCharacterId: id }),
   
-  selectCharacter: (id) => set({ currentCharacterId: id }),
-
   getCurrentCharacter: () => {
     const state = get();
-    return state.characters.find((c) => c.id === state.currentCharacterId) || null;
+    return state.characters.find((c: Character) => c.id === state.currentCharacterId) || null;
   },
 
-  addMessage: (role, message) =>
-    set((state) => ({
-      conversationHistory: [...state.conversationHistory, { role, message }],
+  addToLog: (role: MessageRole, message: string) =>
+    set((state: GameStore) => ({
+      log: [...state.log, { id: uid(), role, message, ts: Date.now() }],
     })),
 
-  clearMessages: () =>
+  clearLog: () =>
     set({
-      conversationHistory: [
-        { role: 'dm', message: 'Welcome, adventurer! Create or select a character to begin your quest.' },
-      ],
+      log: [],
     }),
 
-  setLastRoll: (roll) => set({ lastRoll: roll }),
-  
-  rollDice: (sides, modifier = 0) => {
-    const result = Math.floor(Math.random() * sides) + 1;
-    const total = result + modifier;
-    set({
-      lastRoll: {
-        sides,
-        result,
-        modifier,
-        total,
-        timestamp: Date.now(),
-      },
-      pendingRollRequest: null,
-    });
-  },
+  setLastRoll: (roll: any) => set({ lastRoll: roll }),
 
-  requestRoll: (type) => set({ rollRequest: type, pendingRollRequest: type }),
+  startModule: (module: AdventureModule) => {
+    const startRoomId = module.rooms[0]?.id || '';
+    const startRoom = module.rooms[0];
 
-  clearRollRequest: () => set({ rollRequest: null, pendingRollRequest: null }),
-
-  setCurrentModel: (model) => set({ currentModel: model }),
-
-  setAvailableModels: (models) => set({ availableModels: models }),
-
-  loadModule: (module) =>
     set({
       currentModule: module,
       moduleProgress: {
-        moduleId: module.id,
-        currentRoom: module.rooms[0]?.id || '',
-        visitedRooms: [module.rooms[0]?.id || ''],
-        completedObjectives: [],
+        currentRoom: startRoomId,
         defeatedEncounters: [],
-        collectedItems: [],
       },
-    }),
+      activeEncounter: null,
+      log: [
+        {
+          id: uid(),
+          role: 'system',
+          message: `Loaded module: ${module.title}\n\n${module.summary}`,
+          ts: Date.now()
+        },
+      ]
+    });
 
-  setCurrentRoom: (roomId) =>
-    set((state) =>
-      state.moduleProgress
-        ? {
-            moduleProgress: {
-              ...state.moduleProgress,
-              currentRoom: roomId,
-            },
-          }
-        : {}
-    ),
+    if (startRoom) {
+      get().addToLog('dm', `**${startRoom.name}**\n${startRoom.description}`);
+    }
+  },
 
-  markRoomVisited: (roomId) =>
-    set((state) =>
-      state.moduleProgress
-        ? {
-            moduleProgress: {
-              ...state.moduleProgress,
-              visitedRooms: state.moduleProgress.visitedRooms.includes(roomId)
-                ? state.moduleProgress.visitedRooms
-                : [...state.moduleProgress.visitedRooms, roomId],
-            },
-          }
-        : {}
-    ),
+  move: (direction: string) => {
+    const state = get();
 
-  completeObjective: (objective) =>
-    set((state) =>
-      state.moduleProgress
-        ? {
-            moduleProgress: {
-              ...state.moduleProgress,
-              completedObjectives: [...state.moduleProgress.completedObjectives, objective],
-            },
-          }
-        : {}
-    ),
+    // Prevent movement during combat
+    if (state.activeEncounter) {
+      state.addToLog('system', 'You cannot move while in combat! Flee or defeat the enemies.');
+      return;
+    }
 
-  defeatEncounter: (encounterId) =>
-    set((state) =>
-      state.moduleProgress
-        ? {
-            moduleProgress: {
-              ...state.moduleProgress,
-              defeatedEncounters: [...state.moduleProgress.defeatedEncounters, encounterId],
-            },
-          }
-        : {}
-    ),
+    const currentRoom = state.getCurrentRoom();
+
+    if (!currentRoom) return;
+
+    const nextRoomId = currentRoom.exits[direction];
+
+    if (!nextRoomId) {
+      state.addToLog('system', `You cannot go ${direction}.`);
+      return;
+    }
+
+    // Check if next room exists
+    const nextRoom = state.currentModule?.rooms.find((r: Room) => r.id === nextRoomId);
+    if (!nextRoom) {
+      state.addToLog('system', `Error: Room ${nextRoomId} not found.`);
+      return;
+    }
+
+    set((state: GameStore) => ({
+        moduleProgress: {
+            ...state.moduleProgress!,
+            currentRoom: nextRoomId
+        }
+    }));
+
+    state.addToLog('player', `I go ${direction}.`);
+    state.addToLog('dm', `**${nextRoom.name}**\n${nextRoom.description}`);
+
+    // Check for encounter
+    if (nextRoom.encounterId && !state.moduleProgress?.defeatedEncounters?.includes(nextRoom.encounterId)) {
+        state.startEncounter(nextRoom.encounterId);
+    }
+  },
 
   getCurrentRoom: () => {
     const state = get();
     if (!state.currentModule || !state.moduleProgress) return null;
     return (
-      state.currentModule.rooms.find((r) => r.id === state.moduleProgress!.currentRoom) || null
+      state.currentModule.rooms.find((r: Room) => r.id === state.moduleProgress!.currentRoom) || null
     );
   },
-  
-  // New AI provider actions
-  setAIProvider: (provider) => set({ aiProvider: provider }),
-  
-  setClaudeApiKey: (apiKey) => {
-    set({ claudeApiKey: apiKey });
-    // Store in localStorage for persistence
-    localStorage.setItem('claude-api-key', apiKey);
-  },
-}));
 
-// Load Claude API key from localStorage on startup
-const savedApiKey = localStorage.getItem('claude-api-key');
-if (savedApiKey) {
-  useGameStore.getState().setClaudeApiKey(savedApiKey);
-}
+  startEncounter: (encounterId: string) => {
+    const state = get();
+    const encounter = state.currentModule?.encounters.find((e: Encounter) => e.id === encounterId);
+
+    if (!encounter) return;
+
+    state.addToLog('dm', `**Combat Started!**\n${encounter.description}`);
+
+    const enemies: ActiveEncounterState['enemies'] = [];
+
+    encounter.enemies.forEach((ref: EncounterEnemyRef) => {
+      const count = ref.count || 1;
+      for (let i = 0; i < count; i++) {
+        enemies.push({
+          instanceId: uid(),
+          originalRefId: ref.id || ref.name, // Use name if ID missing
+          name: `${ref.name} ${count > 1 ? i + 1 : ''}`.trim(),
+          hp: ref.stats.hp,
+          maxHp: ref.stats.hp,
+          ac: ref.stats.ac,
+          stats: ref.stats
+        });
+      }
+    });
+
+    set({
+      activeEncounter: {
+        id: encounterId,
+        enemies
+      }
+    });
+  },
+
+  attackEnemy: (enemyInstanceId: string) => {
+    const state = get();
+    const character = state.getCurrentCharacter();
+    if (!state.activeEncounter) return;
+
+    const enemyIndex = state.activeEncounter.enemies.findIndex((e: any) => e.instanceId === enemyInstanceId);
+    if (enemyIndex === -1) return;
+
+    const enemy = state.activeEncounter.enemies[enemyIndex];
+
+    // Logic adapted for Character type from types/character.ts
+    let hitBonus = 2;
+    let dmgDice = 8; // d8
+    let dmgBonus = 0;
+
+    if (character) {
+       // Using character.abilities (strength, dexterity)
+       const strMod = calculateModifier(character.abilities.strength);
+       const dexMod = calculateModifier(character.abilities.dexterity);
+       hitBonus = character.proficiencyBonus + Math.max(strMod, dexMod);
+       dmgBonus = Math.max(strMod, dexMod);
+    }
+
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const hitTotal = d20 + hitBonus;
+
+    let resultMsg = `Attacking ${enemy.name}: Rolled ${d20} + ${hitBonus} = ${hitTotal} (AC ${enemy.ac}).`;
+
+    if (hitTotal >= enemy.ac) {
+       const dmg = Math.floor(Math.random() * dmgDice) + 1 + dmgBonus;
+       const newHp = enemy.hp - dmg;
+       resultMsg += ` **HIT!** for ${dmg} damage.`;
+
+       const newEnemies = [...state.activeEncounter.enemies];
+       newEnemies[enemyIndex] = { ...enemy, hp: newHp };
+
+       if (newHp <= 0) {
+         resultMsg += ` **${enemy.name} is defeated!**`;
+         newEnemies.splice(enemyIndex, 1);
+       }
+
+       set((s: GameStore) => ({
+         activeEncounter: s.activeEncounter ? {
+           ...s.activeEncounter,
+           enemies: newEnemies
+         } : null
+       }));
+
+       state.addToLog('player', resultMsg);
+
+       // Check if encounter ended
+       if (newEnemies.length === 0) {
+         state.addToLog('dm', `**Victory!** All enemies defeated.`);
+         set((s: GameStore) => ({
+           activeEncounter: null,
+           moduleProgress: s.moduleProgress ? {
+             ...s.moduleProgress,
+             defeatedEncounters: [...(s.moduleProgress.defeatedEncounters || []), s.activeEncounter!.id]
+           } : null
+         }));
+       } else {
+         // Enemy Turn
+         setTimeout(() => {
+             const s = useGameStore.getState();
+             if (!s.activeEncounter) return;
+             const attacker = s.activeEncounter.enemies[Math.floor(Math.random() * s.activeEncounter.enemies.length)];
+             const attack = attacker.stats.attacks[0];
+             const enemyRoll = Math.floor(Math.random() * 20) + 1;
+             const enemyTotal = enemyRoll + attack.bonus;
+
+             // Try to use character AC if available, else 15
+             const char = s.getCurrentCharacter();
+             const playerAC = char ? char.armorClass : 15;
+
+             let enemyMsg = `${attacker.name} attacks you with ${attack.name}: Rolled ${enemyRoll} + ${attack.bonus} = ${enemyTotal}.`;
+             if (enemyTotal >= playerAC) {
+                // Parse damage roughly from string like "1d6+2"
+                // For safety/speed, just assume 4 damage for now
+                enemyMsg += ` **Hit!** You take 4 damage.`;
+                // TODO: Deduct HP from character
+             } else {
+                enemyMsg += ` Miss.`;
+             }
+             s.addToLog('dm', enemyMsg);
+         }, 1000);
+       }
+
+    } else {
+       resultMsg += ` Miss.`;
+       state.addToLog('player', resultMsg);
+
+        // Enemy Turn
+         setTimeout(() => {
+             const s = useGameStore.getState();
+             if (!s.activeEncounter) return;
+             const attacker = s.activeEncounter.enemies[Math.floor(Math.random() * s.activeEncounter.enemies.length)];
+             const attack = attacker.stats.attacks[0];
+             const enemyRoll = Math.floor(Math.random() * 20) + 1;
+             const enemyTotal = enemyRoll + attack.bonus;
+
+             const char = s.getCurrentCharacter();
+             const playerAC = char ? char.armorClass : 15;
+
+             let enemyMsg = `${attacker.name} attacks you with ${attack.name}: Rolled ${enemyRoll} + ${attack.bonus} = ${enemyTotal}.`;
+             if (enemyTotal >= playerAC) {
+                enemyMsg += ` **Hit!** You take 4 damage.`;
+             } else {
+                enemyMsg += ` Miss.`;
+             }
+             s.addToLog('dm', enemyMsg);
+         }, 1000);
+    }
+  },
+
+  fleeEncounter: () => {
+     const state = get();
+     state.addToLog('player', 'I flee!');
+     set({ activeEncounter: null });
+  }
+}));
